@@ -9,10 +9,72 @@ const COLORS = {
   floor: 0xb7eccf,
   floorAlt: 0xfff3cf,
   barrier: 0xff9eb5,
+  rock: 0x9aa0c8,
+  snow: 0xffffff,
+  cloud: 0xffffff,
   target: 0xffd6e8,
   targetEdge: 0xff5d99,
   block: 0x5ec8ff,
   blockEdge: 0x2a6f9e,
+};
+
+interface Season {
+  sky: number;
+  floor: number;
+  floorAlt: number;
+  rock: number;
+  snow: number;
+  cloud: number;
+  target: number;
+  targetEdge: number;
+}
+
+/** One theme per grade: 1 Spring, 2 Summer, 3 Autumn, 4 Winter. */
+const SEASONS: Record<number, Season> = {
+  // Spring — fresh greens, cherry-blossom pink, soft blue sky.
+  1: {
+    sky: 0xd2f1ff,
+    floor: 0xbdeeb0,
+    floorAlt: 0xeaf8cb,
+    rock: 0x9aa0c8,
+    snow: 0xffffff,
+    cloud: 0xffffff,
+    target: 0xffd6e8,
+    targetEdge: 0xff5d99,
+  },
+  // Summer — lush grass, sunny sand, vivid sky.
+  2: {
+    sky: 0x8fdcff,
+    floor: 0x86d96a,
+    floorAlt: 0xf3e6a4,
+    rock: 0x9aa0c8,
+    snow: 0xffffff,
+    cloud: 0xffffff,
+    target: 0xfff0a8,
+    targetEdge: 0xff9f1c,
+  },
+  // Autumn — amber and wheat, warm peach sky, brown peaks.
+  3: {
+    sky: 0xffe6c2,
+    floor: 0xe8a85a,
+    floorAlt: 0xf6cf8e,
+    rock: 0x8a6f63,
+    snow: 0xfff3e6,
+    cloud: 0xfff3e6,
+    target: 0xffd9a0,
+    targetEdge: 0xc0532b,
+  },
+  // Winter — icy whites and frost blue, snowy peaks, pale sky.
+  4: {
+    sky: 0xdcefff,
+    floor: 0xeaf4ff,
+    floorAlt: 0xc9e4f5,
+    rock: 0xb9c2d8,
+    snow: 0xffffff,
+    cloud: 0xffffff,
+    target: 0xcfe9ff,
+    targetEdge: 0x4aa6ff,
+  },
 };
 
 const ROLL_MS = 180;
@@ -35,6 +97,7 @@ export class Renderer {
   private edgeMat = new THREE.LineBasicMaterial({ color: COLORS.blockEdge });
 
   private animating = false;
+  private seasonGrade = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -93,6 +156,26 @@ export class Renderer {
     this.cubeMat.color.setHex(color);
   }
 
+  /**
+   * Apply a seasonal theme by grade (1 Spring … 4 Winter). Updates the shared
+   * palette and the sky/fog. Call before {@link loadGrid} so tiles, summits
+   * and target pick up the new colours when they are rebuilt.
+   */
+  setSeason(grade: number) {
+    const s = SEASONS[grade] ?? SEASONS[1];
+    this.seasonGrade = grade;
+    COLORS.sky = s.sky;
+    COLORS.floor = s.floor;
+    COLORS.floorAlt = s.floorAlt;
+    COLORS.rock = s.rock;
+    COLORS.snow = s.snow;
+    COLORS.cloud = s.cloud;
+    COLORS.target = s.target;
+    COLORS.targetEdge = s.targetEdge;
+    this.scene.background = new THREE.Color(s.sky);
+    (this.scene.fog as THREE.Fog).color.setHex(s.sky);
+  }
+
   /** Build the static board (floor, barriers, target) for a grid. */
   loadGrid(grid: Grid, block: Block) {
     this.disposeGroup(this.boardGroup);
@@ -127,20 +210,15 @@ export class Renderer {
         }
 
         if (isBarrier) {
-          const barGeo = new THREE.BoxGeometry(0.9, 1.2, 0.9);
-          const barMat = new THREE.MeshStandardMaterial({
-            color: COLORS.barrier,
-            roughness: 0.6,
-            metalness: 0.1,
-          });
-          const bar = new THREE.Mesh(barGeo, barMat);
-          bar.position.set(x + 0.5, 0.6, y + 0.5);
-          bar.castShadow = true;
-          bar.receiveShadow = true;
-          this.boardGroup.add(bar);
+          const summit = this.makeSummit(x, y);
+          summit.position.set(x + 0.5, 0, y + 0.5);
+          this.boardGroup.add(summit);
         }
       }
     }
+
+    // A winding river meandering across the board (frozen to ice in winter).
+    // this.boardGroup.add(this.makeRiver(w, h));
 
     // Centre the controls/camera on the board.
     this.controls.target.set(w / 2, 0, h / 2);
@@ -150,7 +228,204 @@ export class Renderer {
     this.setBlock(block);
   }
 
-  /** Snap the rendered block to a logical state (no animation). */
+  /** Build a winding S-shaped river with a tributary; ice when winter. */
+  private makeRiver(w: number, h: number): THREE.Group {
+    const group = new THREE.Group();
+    const isWinter = this.seasonGrade === 4;
+
+    const mat = isWinter
+      ? new THREE.MeshStandardMaterial({
+          color: 0xdaf0ff,
+          roughness: 0.12,
+          metalness: 0.0,
+          transparent: true,
+          opacity: 0.94,
+          emissive: 0xbfe4ff,
+          emissiveIntensity: 0.16,
+        })
+      : new THREE.MeshStandardMaterial({
+          color: 0x53b9ff,
+          roughness: 0.22,
+          metalness: 0.0,
+          transparent: true,
+          opacity: 0.82,
+        });
+
+    const toWorld = (u: number, v: number) =>
+      new THREE.Vector3(u * w, 0, v * h);
+
+    // Main channel: top-left, curving down with an S, off the bottom edge.
+    const main = new THREE.CatmullRomCurve3(
+      ([
+        [0.18, 0],
+        [0.26, 0.16],
+        [0.30, 0.31],
+        [0.34, 0.47],
+        [0.42, 0.63],
+        [0.46, 0.81],
+        [0.47, 1],
+      ] as [number, number][]).map(([u, v]) => toWorld(u, v))
+    );
+
+    // Tributary: branches off the main channel toward the bottom-right.
+    const trib = new THREE.CatmullRomCurve3(
+      ([
+        [0.37, 0.50],
+        [0.55, 0.55],
+        [0.70, 0.62],
+        [0.82, 0.74],
+        [0.93, 0.90],
+        [1, 1],
+      ] as [number, number][]).map(([u, v]) => toWorld(u, v))
+    );
+
+    group.add(new THREE.Mesh(this.buildRibbon(main, 0.2), mat));
+    group.add(new THREE.Mesh(this.buildRibbon(trib, 0.17), mat));
+
+    group.position.y = 0.02;
+    for (const child of group.children) {
+      (child as THREE.Mesh).receiveShadow = true;
+      (child as THREE.Mesh).renderOrder = 1;
+    }
+    return group;
+  }
+
+  /** Flat ribbon geometry following a curve in the XZ plane (normals up). */
+  private buildRibbon(
+    curve: THREE.Curve<THREE.Vector3>,
+    width: number
+  ): THREE.BufferGeometry {
+    const segments = 90;
+    const pts = curve.getPoints(segments);
+    const positions: number[] = [];
+    const normals: number[] = [];
+    const uvs: number[] = [];
+    const hw = width / 2;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[Math.max(0, i - 1)];
+      const b = pts[Math.min(pts.length - 1, i + 1)];
+      // Tangent in XZ, then its left-hand perpendicular.
+      let tx = b.x - a.x;
+      let tz = b.z - a.z;
+      const len = Math.hypot(tx, tz) || 1;
+      tx /= len;
+      tz /= len;
+      const nx = tz;
+      const nz = -tx;
+      const p = pts[i];
+      positions.push(p.x + nx * hw, 0, p.z + nz * hw);
+      positions.push(p.x - nx * hw, 0, p.z - nz * hw);
+      normals.push(0, 1, 0, 0, 1, 0);
+      const v = i / (pts.length - 1);
+      uvs.push(0, v, 1, v);
+    }
+    const indices: number[] = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = i * 2;
+      const b = i * 2 + 1;
+      const c = (i + 1) * 2;
+      const d = (i + 1) * 2 + 1;
+      indices.push(a, b, c, b, d, c);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    return geo;
+  }
+
+  /** Build a cute low-poly snow-capped summit ringed by puffy clouds. */
+  private makeSummit(x: number, y: number): THREE.Group {
+    const group = new THREE.Group();
+
+    // Deterministic per-tile pseudo-random so re-renders stay stable.
+    let seed = (x * 73856093) ^ (y * 19349663);
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+
+    const height = 1.35 + rand() * 0.35;
+    const radius = 0.5;
+    const spin = rand() * Math.PI;
+
+    // Rocky mountain body.
+    const rockGeo = new THREE.ConeGeometry(radius, height, 6);
+    const rockMat = new THREE.MeshStandardMaterial({
+      color: COLORS.rock,
+      roughness: 0.95,
+      metalness: 0.0,
+      flatShading: true,
+    });
+    const rock = new THREE.Mesh(rockGeo, rockMat);
+    rock.position.y = height / 2;
+    rock.rotation.y = spin;
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    group.add(rock);
+
+    // Snow cap: a slightly larger coincident cone covering the top third.
+    const capFrac = 0.42;
+    const capGeo = new THREE.ConeGeometry(
+      radius * capFrac * 1.06,
+      height * capFrac,
+      6
+    );
+    const snowMat = new THREE.MeshStandardMaterial({
+      color: COLORS.snow,
+      roughness: 0.85,
+      metalness: 0.0,
+      flatShading: true,
+    });
+    const cap = new THREE.Mesh(capGeo, snowMat);
+    // Align the cap's apex with the mountain's apex.
+    cap.position.y = height - (height * capFrac) / 2;
+    cap.rotation.y = spin;
+    cap.castShadow = true;
+    group.add(cap);
+
+    // Puffy clouds drifting around the mid-slopes. Each summit gets its own
+    // "weather": how many clouds, and how thick/thin they are.
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: COLORS.cloud,
+      roughness: 1.0,
+      metalness: 0.0,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.18,
+    });
+    // 2..6 puffs, and a per-summit thickness 0.42 (wispy) .. 0.78 (fluffy).
+    const puffCount = 2 + Math.floor(rand() * 5);
+    const thickness = 0.42 + rand() * 0.36;
+    const spread = 0.9 + rand() * 0.5;
+    for (let i = 0; i < puffCount; i++) {
+      const angle = (i / puffCount) * Math.PI * 2 + rand() * 0.7;
+      const dist = 0.42 + rand() * 0.18;
+      const cy = height * (0.32 + rand() * 0.3);
+      const puff = new THREE.Group();
+      const blobs = 2 + Math.floor(rand() * 4);
+      for (let b = 0; b < blobs; b++) {
+        const r = (0.13 + rand() * 0.16) * spread;
+        const blob = new THREE.Mesh(
+          new THREE.SphereGeometry(r, 10, 8),
+          cloudMat
+        );
+        // Flatten and widen so puffs read as soft clouds, not balls.
+        blob.scale.set(1.2 + rand() * 0.3, thickness, 1.0 + rand() * 0.2);
+        blob.position.set(
+          (b - (blobs - 1) / 2) * 0.2 + (rand() - 0.5) * 0.06,
+          (rand() - 0.5) * 0.05,
+          (rand() - 0.5) * 0.07
+        );
+        puff.add(blob);
+      }
+      puff.position.set(Math.cos(angle) * dist, cy, Math.sin(angle) * dist);
+      puff.lookAt(0, cy, 0);
+      group.add(puff);
+    }
+
+    return group;
+  }
   setBlock(block: Block) {
     this.disposeGroup(this.blockGroup);
     this.blockGroup.position.set(0, 0, 0);
@@ -250,6 +525,11 @@ export class Renderer {
   private disposeGroup(group: THREE.Group) {
     for (const child of [...group.children]) {
       group.remove(child);
+      // Recurse into nested groups (e.g. summit mountains + clouds).
+      if (child instanceof THREE.Group) {
+        this.disposeGroup(child);
+        continue;
+      }
       const mesh = child as THREE.Mesh;
       if (mesh.geometry && mesh.geometry !== this.cubeGeo) {
         mesh.geometry.dispose();

@@ -187,6 +187,7 @@ export class Game {
     this.won = false;
 
     this.renderer.setBlockColor(this.block.color);
+    this.renderer.setSeason(this.block.grade);
     this.renderer.loadGrid(this.grid, this.piece);
 
     this.elGameLevelName.textContent = `${this.block.name} · Level ${index + 1}`;
