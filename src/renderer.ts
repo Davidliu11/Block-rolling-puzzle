@@ -5,13 +5,14 @@ import type { Grid } from "./grid";
 import type { Direction } from "./types";
 
 const COLORS = {
-  floor: 0x222633,
-  floorAlt: 0x1b1f2a,
-  barrier: 0x3a2030,
-  target: 0x163a2a,
-  targetEdge: 0x4ade80,
-  block: 0x4cc2ff,
-  blockEdge: 0x0a3550,
+  sky: 0xbfe9ff,
+  floor: 0xb7eccf,
+  floorAlt: 0xfff3cf,
+  barrier: 0xff9eb5,
+  target: 0xffd6e8,
+  targetEdge: 0xff5d99,
+  block: 0x5ec8ff,
+  blockEdge: 0x2a6f9e,
 };
 
 const ROLL_MS = 180;
@@ -28,8 +29,8 @@ export class Renderer {
   private cubeGeo = new THREE.BoxGeometry(0.92, 0.92, 0.92);
   private cubeMat = new THREE.MeshStandardMaterial({
     color: COLORS.block,
-    metalness: 0.2,
-    roughness: 0.45,
+    metalness: 0.0,
+    roughness: 0.55,
   });
   private edgeMat = new THREE.LineBasicMaterial({ color: COLORS.blockEdge });
 
@@ -44,8 +45,8 @@ export class Renderer {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    this.scene.background = new THREE.Color(0x0e0f13);
-    this.scene.fog = new THREE.Fog(0x0e0f13, 18, 40);
+    this.scene.background = new THREE.Color(COLORS.sky);
+    this.scene.fog = new THREE.Fog(COLORS.sky, 22, 48);
 
     this.camera = new THREE.PerspectiveCamera(
       45,
@@ -71,8 +72,9 @@ export class Renderer {
   }
 
   private setupLights() {
-    this.scene.add(new THREE.HemisphereLight(0x8899ff, 0x202028, 0.7));
-    const dir = new THREE.DirectionalLight(0xffffff, 1.1);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xcdeacb, 1.15));
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+    const dir = new THREE.DirectionalLight(0xfff7e6, 1.55);
     dir.position.set(6, 14, 8);
     dir.castShadow = true;
     dir.shadow.mapSize.set(2048, 2048);

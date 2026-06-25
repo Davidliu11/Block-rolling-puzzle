@@ -23,8 +23,8 @@ export const BLOCK_TYPES: BlockType[] = [
     name: "Domino",
     grade: 1,
     difficulty: "Easy",
-    color: 0x4cc2ff,
-    cssColor: "#4cc2ff",
+    color: 0x5ec8ff,
+    cssColor: "#5ec8ff",
     // XX
     footprint: [
       { x: 0, y: 0 },
@@ -36,8 +36,8 @@ export const BLOCK_TYPES: BlockType[] = [
     name: "Square",
     grade: 2,
     difficulty: "Medium",
-    color: 0x4ade80,
-    cssColor: "#4ade80",
+    color: 0x6ee7a8,
+    cssColor: "#6ee7a8",
     // XX
     // XX
     footprint: [
@@ -52,8 +52,8 @@ export const BLOCK_TYPES: BlockType[] = [
     name: "U-Block",
     grade: 3,
     difficulty: "Hard",
-    color: 0xffcb47,
-    cssColor: "#ffcb47",
+    color: 0xffd24c,
+    cssColor: "#ffd24c",
     // 2x3 with the middle cell removed
     // X.X
     // XXX
@@ -70,8 +70,8 @@ export const BLOCK_TYPES: BlockType[] = [
     name: "Slab",
     grade: 4,
     difficulty: "Expert",
-    color: 0xf87171,
-    cssColor: "#f87171",
+    color: 0xff8aa0,
+    cssColor: "#ff8aa0",
     // 2x4 with a middle cell removed
     // X.XX
     // XXXX
