@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Block Rolling Puzzle</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <!-- ============================ MENU ============================ -->
+      <section id="menu-screen" class="screen">
+        <div class="menu-inner">
+          <h1 class="game-title">BLOCK&nbsp;ROLLER</h1>
+          <p class="game-sub">Choose your block — each one is a tougher grade.</p>
+          <div id="block-cards" class="block-cards"></div>
+        </div>
+      </section>
+
+      <!-- ======================= LEVEL SELECT ======================== -->
+      <section id="levels-screen" class="screen hidden">
+        <div class="levels-inner">
+          <header class="levels-head">
+            <button id="levels-back" class="ghost-btn">‹ MENU</button>
+            <div class="levels-title">
+              <span id="levels-block-name">Block</span>
+              <span id="levels-progress" class="levels-progress">0 / 20</span>
+            </div>
+            <div class="spacer"></div>
+          </header>
+          <div id="level-grid" class="level-grid"></div>
+        </div>
+      </section>
+
+      <!-- ============================ GAME =========================== -->
+      <div id="game-ui" class="hidden">
+        <header id="topbar">
+          <button id="game-back" class="ghost-btn">‹ LEVELS</button>
+          <h2 id="game-level-name">Level 1</h2>
+          <button id="game-menu" class="ghost-btn">MENU</button>
+        </header>
+
+        <aside id="hud">
+          <div class="hud-row">
+            <span class="hud-label">STEPS</span>
+            <span id="steps-used" class="hud-value">0</span>
+            <span class="hud-sep">/</span>
+            <span id="steps-required" class="hud-value">0</span>
+          </div>
+          <div id="status" class="status"></div>
+          <div class="hud-buttons">
+            <button id="btn-undo" title="Undo (Backspace)">UNDO</button>
+            <button id="btn-reset" title="Reset (R)">RESET</button>
+            <button id="btn-hint" title="Hint (H)">HINT</button>
+          </div>
+          <p class="help">
+            Roll with <b>Arrow keys</b> / <b>WASD</b>.<br />
+            Land <b>flat</b> on the target in the
+            <b>exact</b> number of steps.
+          </p>
+        </aside>
+
+        <div id="touch-pad">
+          <button class="pad-btn" data-dir="south">▲</button>
+          <div class="pad-mid">
+            <button class="pad-btn" data-dir="west">◀</button>
+            <button class="pad-btn" data-dir="north">▼</button>
+            <button class="pad-btn" data-dir="east">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== LEVEL-COMPLETE MODAL ================== -->
+      <div id="modal-overlay" class="overlay hidden">
+        <div class="modal">
+          <div class="modal-badge">✦</div>
+          <h2 class="modal-title">Level Complete!</h2>
+          <p id="modal-sub" class="modal-sub"></p>
+          <div class="modal-buttons">
+            <button id="modal-next" class="primary">NEXT LEVEL ›</button>
+            <button id="modal-replay">PLAY AGAIN</button>
+            <button id="modal-menu">MENU</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== LOADING INDICATOR ===================== -->
+      <div id="loading" class="overlay hidden">
+        <div class="spinner"></div>
+        <p>Building levels…</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
